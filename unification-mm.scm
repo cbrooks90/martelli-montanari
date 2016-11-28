@@ -77,12 +77,6 @@
         (cons new-eqn (fold-left (lambda (y x) (remove x y)) y touched-eqns))))
     l2 l1))
 
-(define (vars-in-term? vs term)
-  (cond [(pair? term) (or (vars-in-term? vs (car term))
-                          (vars-in-term? vs (cdr term)))]
-        [(var? term) (not (empty-intersect? (list (var-num term)) vs))]
-        [else #f]))
-
 (define (merge-vars l1 l2 accum)
   (cond [(null? l1) (append accum l2)]
         [(null? l2) (append accum l1)]
