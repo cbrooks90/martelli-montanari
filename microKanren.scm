@@ -1,15 +1,6 @@
 ;; Jason Hemann and Dan Friedman
-;; microKanren, final implementation from paper
 
-(define (var c) (vector c))
-(define (var? x) (vector? x))
-(define (var=? x1 x2) (= (vector-ref x1 0) (vector-ref x2 0)))
-
-(define (walk u s)
-  (let ((pr (and (var? u) (assp (lambda (v) (var=? u v)) s))))
-    (if pr (walk (cdr pr) s) u)))
-
-(define (ext-s x v s) `((,x . ,v) . ,s))
+(load "unification-mm.scm")
 
 (define (== u v)
   (lambda (s/c)
@@ -18,17 +9,6 @@
 
 (define (unit s/c) (cons s/c mzero))
 (define mzero '())
-
-(define (unify u v s)
-  (let ((u (walk u s)) (v (walk v s)))
-    (cond
-      ((and (var? u) (var? v) (var=? u v)) s)
-      ((var? u) (ext-s u v s))
-      ((var? v) (ext-s v u s))
-      ((and (pair? u) (pair? v))
-       (let ((s (unify (car u) (car v) s)))
-         (and s (unify (cdr u) (cdr v) s))))
-      (else (and (eqv? u v) s)))))
 
 (define (call/fresh f)
   (lambda (s/c)
