@@ -31,7 +31,7 @@
 (define (rep v equiv-vars)
   (let loop ([vs equiv-vars])
     (cond [(null? vs) v]
-          [(memv v vs) (car vs)]
+          [(memv v (car vs)) (caar vs)]
           [else (loop (cdr vs))])))
 
 (define (canonicalize vars rhs eqns equiv-vars)
@@ -45,7 +45,9 @@
     (if (null? vars)
         (values (var (car reps))
                 (if (eqv? (car reps) 'aux) eqns (cons (multieqn refs (car reps) rhs) eqns))
-                (cons (append reps equiv-to-v) equiv-vars))
+                (if (and (null? equiv-to-v) (null? (cdr reps)))
+                    equiv-vars
+                    (cons (append reps equiv-to-v) equiv-vars)))
         (let* ([v (rep (var-num (car vars)) equiv-vars)]
                [eqn (find-equation v eqns)])
           (loop (cdr vars)
@@ -89,26 +91,25 @@
 (define (solve unsolved solved vars-in-solved equiv-vars)
   (if (null? unsolved) (values solved equiv-vars)
       (let ([meqn (assv 0 unsolved)])
-        (and meqn (let* ([vars (multieqn-vars meqn)]
-                         [rhs (multieqn-rhs meqn)]
-                         [new-count (fold-left
-                                      (lambda (y x)
-                                        (if (memv (car x) vars)
-                                            (+ (cdr x) y) y))
-                                      0 vars-in-solved)])
-                    (if (null? rhs)
-                        (solve (remove meqn unsolved)
-                               (cons (multieqn new-count vars rhs) solved)
-                               vars-in-solved
-                               equiv-vars)
-                        (let-values ([(c eqns~ equiv-vars~)
-                                      (factor rhs (remove meqn unsolved) equiv-vars)])
-                          (and c (if (eqv? vars 'aux)
-                                     (solve eqns~ solved vars-in-solved equiv-vars~)
-                                     (solve eqns~
-                                            (cons (multieqn new-count vars (list c)) solved)
-                                            (merge-vars (vars-in c) vars-in-solved '())
-                                            equiv-vars~))))))))))
+        (if meqn
+            (let* ([vars (multieqn-vars meqn)]
+                   [rhs (multieqn-rhs meqn)]
+                   [new-count (let ([n (assv vars vars-in-solved)]) (if n (cdr n) 0))])
+              (if (null? rhs)
+                  (solve (remove meqn unsolved)
+                         (cons (multieqn new-count vars rhs) solved)
+                         vars-in-solved
+                         equiv-vars)
+                  (let-values ([(c eqns~ equiv-vars~)
+                                (factor rhs (remove meqn unsolved) equiv-vars)])
+                    (cond [(and c (eqv? vars 'aux))
+                           (solve eqns~ solved vars-in-solved equiv-vars~)]
+                          [c (solve eqns~
+                                    (cons (multieqn new-count vars (list c)) solved)
+                                    (merge-vars (vars-in c) vars-in-solved '())
+                                    equiv-vars~)]
+                          [else (values #f '())]))))
+            (values #f '())))))
 
 (define (initialize-eqns eqns var-counts equiv-vars)
   (if (null? var-counts) eqns
@@ -122,10 +123,11 @@
                 [(eqv? v (multieqn-vars (car eqns)))
                  (initialize-eqns
                    (append accum
-                           (multieqn (+ (cdar var-counts) (multieqn-count (car eqn)))
-                                     v
-                                     (multieqn-rhs (car eqn)))
-                           (cdr eqns))
+                           (cons
+                             (multieqn (+ (cdar var-counts) (multieqn-count (car eqns)))
+                                       v
+                                       (multieqn-rhs (car eqns)))
+                             (cdr eqns)))
                    (cdr var-counts)
                    equiv-vars)]
                 [else (loop (cdr eqns) (cons (car eqns) accum))])))))
@@ -135,7 +137,4 @@
     (solve (cons
              (multieqn 0 'aux (list t1 t2))
              (initialize-eqns prev-solved var-counts equiv-vars))
-           '() '() '())))
-
-(trace unify rep find-equation initialize-eqns solve factor canonicalize)
-(unify `(,(var 0) ,(var 1)) `(5 7) '() '())
+           '() '() equiv-vars)))
