@@ -53,40 +53,32 @@
         (if (null? $) '() (cons (car $) (take (- n 1) (cdr $)))))))
 
 (define (reify-1st s/c)
-  (let ((v (resolve* (var 0) (car s/c))))
+  (let ([v (resolve (var 0) (car s/c) (cadr s/c))])
     (let-values ([(res _) (reify-s v '())])
       res)))
 
-(define (resolve u s)
-  (let ([pr (and (var? u)
-                 (let loop ([s s])
-                   (cond [(null? s) #f]
-                         [(memv (var-num u) (multieqn-vars (car s))) (car s)]
-                         [else (loop (cdr s))])))])
-    (cond [(and pr (null? (multieqn-rhs pr))) (var (car (multieqn-vars pr)))]
-          [pr (resolve (car (multieqn-rhs pr)) s)]
-          [else u])))
+(define (resolve term subst equiv-vars)
+  (cond [(var? term)
+         (let* ([v (rep (var-num term) equiv-vars)]
+                [t (assv v subst)])
+           (if (null? (eqn-rhs t)) (var v)
+               (resolve (car (eqn-rhs t)) subst equiv-vars)))]
+        [(pair? term) (cons (resolve (car term) subst equiv-vars)
+                            (resolve (cdr term) subst equiv-vars))]
+        [else term]))
 
-(define (resolve* v s)
-  (let ([v (resolve v s)])
-    (cond
-      ((var? v) v)
-      ((pair? v) (cons (resolve* (car v) s)
-                       (resolve* (cdr v) s)))
-      (else v))))
-
-(define (reify-s v s)
-  (cond [(var? v)
-         (let ([binding (assv (var-num v) s)])
-           (if binding
-               (values (cdr binding) s)
-               (let ([new-binding (reify-name (length s))])
-                 (values new-binding (cons (cons (var-num v) new-binding) s)))))]
-        [(pair? v)
-         (let*-values ([(car-v car-b) (reify-s (car v) s)]
-                       [(cdr-v cdr-b) (reify-s (cdr v) car-b)])
-           (values (cons car-v cdr-v) cdr-b))]
-        [else (values v s)]))
+(define (reify-s t names)
+  (cond [(var? t)
+         (let ([name (assv (var-num t) names)])
+           (if name
+               (values (cdr name) names)
+               (let ([name (reify-name (length names))])
+                 (values name (cons (cons (var-num t) name) names)))))]
+        [(pair? t)
+         (let*-values ([(car-name names~) (reify-s (car t) names)]
+                       [(cdr-name names~) (reify-s (cdr t) names~)])
+           (values (cons car-name cdr-name) names~))]
+        [else (values t names)]))
 
 (define (reify-name n)
   (string->symbol
