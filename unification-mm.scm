@@ -15,47 +15,40 @@
         [(symbol? term) term]
         [else (error 'prefix "Unrecognized term")]))
 
-(define (common-prefix terms)
-  (let loop ([terms (cdr terms)]
-             [last (prefix (car terms))])
-    (cond [(null? terms) last]
-          [(eqv? last (prefix (car terms))) (loop (cdr terms) last)]
-          [else #f])))
+(define (common-prefix first rest)
+  (if (null? rest)
+      first
+      (let ([p (prefix (car rest))])
+        (if (eqv? first p)
+            (common-prefix p (cdr rest))
+            #f))))
 
 (define (rep v equiv-vars)
-  (let loop ([vs equiv-vars])
-    (cond [(null? vs) v]
-          [(memv v (car vs)) (caar vs)]
-          [else (loop (cdr vs))])))
+  (cond [(null? equiv-vars) v]
+        [(memv v (car equiv-vars)) (caar equiv-vars)]
+        [else (rep (cdr equiv-vars))]))
 
-(define (merge vars rhs eqns equiv-vars)
-  (let loop ([vars vars]
-             [refs 0]
-             [reps '()]
-             [rhs rhs]
-             [eqns eqns]
-             [equiv-to-v '()]
-             [equiv-vars equiv-vars])
-    (if (null? vars)
-        (values (var (car reps))
-                (if (eqv? (car reps) 'aux) eqns (cons (eqn (car reps) refs rhs) eqns))
-                (if (and (null? equiv-to-v) (null? (cdr reps)))
-                    equiv-vars
-                    (cons (append reps equiv-to-v) equiv-vars)))
-        (let* ([v (rep (var-num (car vars)) equiv-vars)]
-               [eqn (assv v eqns)])
-          (loop (cdr vars)
-                (- (+ refs (eqn-count eqn)) 1)
-                (if (memv v reps) reps (cons v reps))
-                (append rhs (eqn-rhs eqn))
-                (remove eqn eqns)
-                (append equiv-to-v (cdr (or (assv v equiv-vars) (list #f))))
-                (remove (assv v equiv-vars) equiv-vars))))))
+(define (merge vars refs reps rhs eqns equiv-to-v equiv-vars)
+  (if (null? vars)
+      (values (var (car reps))
+              (if (eqv? (car reps) 'aux) eqns (cons (eqn (car reps) refs rhs) eqns))
+              (if (and (null? equiv-to-v) (null? (cdr reps)))
+                  equiv-vars
+                  (cons (append reps equiv-to-v) equiv-vars)))
+      (let* ([v (rep (var-num (car vars)) equiv-vars)]
+             [eqn (assv v eqns)])
+        (merge (cdr vars)
+               (- (+ refs (eqn-count eqn)) 1)
+               (if (memv v reps) reps (cons v reps))
+               (append rhs (eqn-rhs eqn))
+               (remove eqn eqns)
+               (append equiv-to-v (cdr (or (assv v equiv-vars) (list #f))))
+               (remove (assv v equiv-vars) equiv-vars)))))
 
 (define (factor terms eqns equiv-vars)
   (let ([vars (filter var? terms)])
     (if (null? vars)
-        (let ([head (common-prefix terms)])
+        (let ([head (common-prefix (prefix (car terms)) (cdr terms))])
           (case head
             [(#t)
              (let*-values
@@ -63,7 +56,7 @@
                 [(cdr-c eqns~ equiv-vars~) (factor (map cdr terms) eqns~ equiv-vars~)])
                (values (and car-c cdr-c (cons car-c cdr-c)) eqns~ equiv-vars~))]
             [else (values head eqns equiv-vars)]))
-        (merge vars (filter (lambda (x) (not (var? x))) terms) eqns equiv-vars))))
+        (merge vars 0 '() (filter (lambda (x) (not (var? x))) terms) eqns '() equiv-vars))))
 
 (define (merge-vars l1 l2 accum)
   (cond [(null? l1) (append accum l2)]
@@ -80,10 +73,9 @@
         [else '()]))
 
 (define (find-unreferenced eqns)
-  (let loop ([eqns eqns])
-    (cond [(null? eqns) #f]
-          [(eqv? 0 (eqn-count (car eqns))) (car eqns)]
-          [else (loop (cdr eqns))])))
+  (cond [(null? eqns) #f]
+        [(eqv? 0 (eqn-count (car eqns))) (car eqns)]
+        [else (find-unreferenced (cdr eqns))]))
 
 ; An invariant of solved sets of eqns for this algorithm is any variable in
 ; the lhs of an equation is only referred to by an equation after it, not before
