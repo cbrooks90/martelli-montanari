@@ -4,7 +4,7 @@
 
 (define (== u v)
   (lambda (s/c)
-    (let-values ([(solved counts equiv) (unify u v (car s/c) (cadr s/c))])
+    (let-values ([(solved equiv) (unify u v (car s/c) (cadr s/c))])
       (if solved (unit `(,solved ,equiv . ,(cddr s/c))) mzero))))
 
 (define (unit s/c) (cons s/c mzero))
