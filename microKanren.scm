@@ -1,6 +1,6 @@
 ;; Jason Hemann and Dan Friedman
 
-(load "unification-mm.scm")
+(load "unification.scm")
 
 (define (== u v)
   (lambda (s/c)
