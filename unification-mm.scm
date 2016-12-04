@@ -1,7 +1,6 @@
 (define var vector)
 (define var? vector?)
 (define (var-num x) (vector-ref x 0))
-(define (var=? v1 v2) (= (var-num v1) (var-num v2)))
 
 (define (eqn v c ts) `(,v ,c . ,ts))
 (define eqn-count cadr)
@@ -89,26 +88,27 @@
         [(pair? t) (merge-vars (vars-in (car t)) (vars-in (cdr t)) '())]
         [else '()]))
 
+(define (initialize vs eqns equiv-vars)
+  (if (null? vs) eqns
+      (let loop ([eqns eqns] [v (rep (caar vs) equiv-vars)] [accum '()])
+        (if (null? eqns)
+            (initialize (cdr vs) (cons (eqn v (cdar vs) '()) accum) equiv-vars)
+            (let ([e (car eqns)]
+                  [es (cdr eqns)])
+              (if (eqv? v (eqn-var e))
+                  (initialize
+                    (cdr vs)
+                    (append accum (cons (eqn v (+ (eqn-count e) (cdar vs)) (eqn-rhs e)) es))
+                    equiv-vars)
+                  (loop es v (cons e accum))))))))
+
 (define (unify t1 t2 solved equiv-vars)
-  (define (initialize var-counts eqns)
-    (if (null? var-counts) eqns
-        (let loop ([eqns eqns] [v (rep (caar var-counts) equiv-vars)] [accum '()])
-          (if (null? eqns)
-              (initialize (cdr var-counts) (cons (eqn v (cdar var-counts) '()) accum))
-              (let ([e (car eqns)])
-                (if (eqv? v (eqn-var (car eqns)))
-                    (initialize
-                      (cdr var-counts)
-                      (append
-                        accum
-                        (cons
-                          (eqn v (+ (eqn-count e) (cdar var-counts)) (eqn-rhs e))
-                          (cdr eqns))))
-                    (loop (cdr eqns) v (cons e accum))))))))
-  (let-values ([(c unsolved solved equiv-vars)
-                (factor `(,t1 ,t2)
-                        '()
-                        (initialize (merge-vars (vars-in t1) (vars-in t2) '()) solved)
-                        equiv-vars)])
+  (let-values
+    ([(c unsolved solved equiv-vars)
+      (factor
+        `(,t1 ,t2)
+        '()
+        (initialize (merge-vars (vars-in t1) (vars-in t2) '()) solved equiv-vars)
+        equiv-vars)])
     (if c (solve unsolved solved equiv-vars)
         (values #f '()))))
