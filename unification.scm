@@ -70,7 +70,7 @@
             (let-values ([(c unsolved~ solved~ equiv-vars~)
                           (factor (eqn-rhs e) (remove e unsolved) solved equiv-vars)])
               (if c
-                  (solve unsolved~ solved~ equiv-vars~)
+                  (solve unsolved~ (cons (eqn (eqn-var e) 0 (list c)) solved~) equiv-vars~)
                   (values #f '())))
             (values #f '())))))
 
