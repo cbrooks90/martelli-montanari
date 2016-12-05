@@ -113,12 +113,12 @@
 (test-check
   "reify-1st across appendo"
   (map reify-1st (take 2 (call-appendo empty-state)))
-  (map reify-1st~ '((() _.0 _.0) ((_.0) _.1 (_.0 . _.1)))))
+  '((() _.0 _.0) ((_.0) _.1 (_.0 . _.1))))
 
 (test-check
   "reify-1st across appendo2"
   (map reify-1st (take 2 (call-appendo2 empty-state)))
-  (map reify-1st~ '((() _.0 _.0) ((_.0) _.1 (_.0 . _.1)))))
+  '((() _.0 _.0) ((_.0) _.1 (_.0 . _.1))))
 
 (test-check
   "many non-ans"
