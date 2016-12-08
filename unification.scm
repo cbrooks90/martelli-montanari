@@ -45,30 +45,37 @@
                (- (+ refs (eqn-count e)) 1)
                (if (memv v reps) reps (cons v reps))
                (append rhs (eqn-rhs e))
-               (if e-from-u (remove e-from-u unsolved) unsolved)
-               (if e-from-s (remove e-from-s solved) solved)
+               (if e-from-u (remove e unsolved) unsolved)
+               (if e-from-s (remove e solved) solved)
                (append equiv-to-v (cdr (or (assv v equiv-vars) (list #f))))
                (remove (assv v equiv-vars) equiv-vars)))))
 
-(define (factor terms u s equiv-vars)
+(define (factor terms u s equiv-vars top?)
   (let ([vars (filter var? terms)])
     (if (null? vars)
         (let ([head (common-prefix (prefix (car terms)) (cdr terms))])
           (case head
             [(#t)
              (let*-values
-               ([(car-c u~ s~ equiv-vars~) (factor (map car terms) u  s  equiv-vars)]
-                [(cdr-c u~ s~ equiv-vars~) (factor (map cdr terms) u~ s~ equiv-vars~)])
+               ([(car-c u~ s~ equiv-vars~) (factor (map car terms) u  s  equiv-vars  #f)]
+                [(cdr-c u~ s~ equiv-vars~) (factor (map cdr terms) u~ s~ equiv-vars~ #f)])
                (values (and car-c cdr-c (cons car-c cdr-c)) u~ s~ equiv-vars~))]
             [else (values head u s equiv-vars)]))
-        (merge vars 0 '() (filter (lambda (x) (not (var? x))) terms) u s '() equiv-vars))))
+        (merge vars (if top? 0 1) '() (remp var? terms) u s '() equiv-vars))))
+
+(define (unreferenced? e)
+  (eqv? 0 (eqn-count e)))
 
 (define (solve unsolved solved equiv-vars)
   (if (null? unsolved) (values solved equiv-vars)
-      (let ([e (find (lambda (x) (eqv? 0 (eqn-count x))) unsolved)])
+      (let ([e (find unreferenced? unsolved)])
         (if e
             (let-values ([(c unsolved~ solved~ equiv-vars~)
-                          (factor (eqn-rhs e) (remove e unsolved) solved equiv-vars)])
+                          (factor (eqn-rhs e)
+                                  (remq e unsolved)
+                                  solved
+                                  equiv-vars
+                                  #t)])
               (if c
                   (solve unsolved~ (cons (eqn (eqn-var e) 0 (list c)) solved~) equiv-vars~)
                   (values #f '())))
@@ -90,17 +97,19 @@
 
 (define (initialize vs eqns equiv-vars)
   (if (null? vs) eqns
-      (let loop ([eqns eqns] [v (rep (caar vs) equiv-vars)] [accum '()])
-        (if (null? eqns)
-            (initialize (cdr vs) (cons (eqn v (cdar vs) '()) accum) equiv-vars)
-            (let ([e (car eqns)]
-                  [es (cdr eqns)])
-              (if (eqv? v (eqn-var e))
+      (let loop ([es eqns] [v (rep (caar vs) equiv-vars)] [accum '()])
+        (if (null? es)
+            (initialize (cdr vs) (cons (eqn v (cdar vs) '()) eqns) equiv-vars)
+            (let ([e (car es)])
+              (if (eq? v (eqn-var e))
                   (initialize
                     (cdr vs)
-                    (append accum (cons (eqn v (+ (eqn-count e) (cdar vs)) (eqn-rhs e)) es))
+                    (append
+                      accum
+                      (cons (eqn v (+ (eqn-count e) (cdar vs)) (eqn-rhs e))
+                            (cdr es)))
                     equiv-vars)
-                  (loop es v (cons e accum))))))))
+                  (loop (cdr es) v (cons e accum))))))))
 
 (define (unify t1 t2 solved equiv-vars)
   (let-values
@@ -109,6 +118,7 @@
         `(,t1 ,t2)
         '()
         (initialize (merge-vars (vars-in t1) (vars-in t2) '()) solved equiv-vars)
-        equiv-vars)])
+        equiv-vars
+        #t)])
     (if c (solve unsolved solved equiv-vars)
         (values #f '()))))
