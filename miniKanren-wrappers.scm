@@ -59,9 +59,9 @@
 
 (define (resolve term subst equiv-vars)
   (cond [(var? term)
-         (let* ([v (rep (var-num term) equiv-vars)]
-                [t (assv v subst)])
-           (if (null? (eqn-rhs t)) (var v)
+         (let* ([v (rep term equiv-vars)]
+                [t (or (assp (lambda (x) (var=? v x)) subst) (eqn v 0 '()))])
+           (if (null? (eqn-rhs t)) v
                (resolve (car (eqn-rhs t)) subst equiv-vars)))]
         [(pair? term) (cons (resolve (car term) subst equiv-vars)
                             (resolve (cdr term) subst equiv-vars))]
@@ -69,11 +69,11 @@
 
 (define (reify-s t names)
   (cond [(var? t)
-         (let ([name (assv (var-num t) names)])
+         (let ([name (assv t names)])
            (if name
                (values (cdr name) names)
                (let ([name (reify-name (length names))])
-                 (values name (cons (cons (var-num t) name) names)))))]
+                 (values name (cons (cons t name) names)))))]
         [(pair? t)
          (let*-values ([(car-name names~) (reify-s (car t) names)]
                        [(cdr-name names~) (reify-s (cdr t) names~)])
