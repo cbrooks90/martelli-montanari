@@ -48,7 +48,7 @@
              [vars (if pr (remp (lambda (x) (var=? (car x) v)) vars) vars)])
         (cons (eqn v (+ c δ) rhs) (add-refs (cdr li) vars)))))
 
-(define (merge vars refs reps rhs unsolved solved equiv-to-v equiv-vars vars-to-add)
+(define (merge vars refs reps rhs unsolved solved equiv-to-v equiv-vars vars-to-rem vars-to-add)
   (if (null? vars)
       (let ([e (eqn (car reps) refs rhs)]
             [equiv-vars
@@ -56,20 +56,16 @@
                  equiv-vars
                  (cons (append reps equiv-to-v) equiv-vars))])
         (if (null? rhs)
-            (begin (if (= (eqn-count e) 0) void (error #f "Nonzero solved"))
-              (values (car reps) unsolved (cons e solved) equiv-vars))
-            (let ([rhs-vars (vars-in rhs)])
-              (if (null? (cdr rhs))
-                  (begin
-                    (if (= (eqn-count e) 0) void (error #f "Nonzero solved"))
-                  (values (car reps)
-                          (rem-refs unsolved rhs-vars)
-                          (cons e (rem-refs solved rhs-vars))
-                          equiv-vars))
-                  (values (car reps)
-                          (cons e (add-refs unsolved vars-to-add))
-                          (add-refs solved vars-to-add)
-                          equiv-vars)))))
+            (values (car reps) unsolved (cons e solved) equiv-vars)
+            (if (null? (cdr rhs))
+                (values (car reps)
+                        (rem-refs unsolved vars-to-rem)
+                        (cons e (rem-refs solved vars-to-rem))
+                        equiv-vars)
+                (values (car reps)
+                        (cons e (add-refs unsolved vars-to-add))
+                        (add-refs solved vars-to-add)
+                        equiv-vars))))
       (let* ([v (rep (car vars) equiv-vars)]
              [e-from-u (assp (lambda (x) (var=? x v)) unsolved)]
              [e-from-s (and (not e-from-u) (assp (lambda (x) (var=? x v)) solved))]
@@ -83,6 +79,7 @@
                    (if e-from-s (remove e solved) solved)
                    (append equiv-to-v (cdr (or (assq v equiv-vars) (list #f))))
                    (remq (assq v equiv-vars) equiv-vars)
+                   (if e-from-u (merge-vars (vars-in (eqn-rhs e)) vars-to-rem) vars-to-rem)
                    (if e-from-s (merge-vars (vars-in (eqn-rhs e)) vars-to-add) vars-to-add))
             void))));(merge (cdr vars) (- refs 1) reps rhs unsolved solved equiv-to-v equiv-vars)))))
 
@@ -99,7 +96,8 @@
                (values (cons car-c cdr-c) u s equiv-vars)))]
             [(#f) (values head u #f equiv-vars)]
             [else (values (unprefix head) u s equiv-vars)]))
-        (merge vars top '() (filter (lambda (x) (not (var? x))) terms) u s '() equiv-vars '()))))
+        (let ([not-vars (filter (lambda (x) (not (var? x))) terms)])
+          (merge vars top '() not-vars u s '() equiv-vars (vars-in not-vars) '())))))
 
 (define (solve unsolved solved equiv-vars)
   (if (null? unsolved) (values solved equiv-vars)
