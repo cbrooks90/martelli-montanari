@@ -1,5 +1,6 @@
 (define succeed (== #f #f))
 (define fail (== #f #t))
+(define max-ticks 10000000)
 
 (test-check "testc11.tex-1"
   (run* (q)
@@ -1647,8 +1648,8 @@
   `((((a b) c))
     ((a b) (c))
     ((a b) c)
-    (a (b) (c))
     ((a b) c ())
+    (a (b) (c))
     (a (b) c)
     (a (b) c ())
     (a b (c))
@@ -1715,8 +1716,8 @@
   `((((a b) c))
     ((a b) (c))
     ((a b) c)
-    (a (b) (c))
     ((a b) c ())
+    (a (b) (c))
     (a (b) c)
     (a (b) c ())
     (a b (c))
