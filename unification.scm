@@ -36,7 +36,6 @@
              [v (eqn-var e)] [c (eqn-count e)] [rhs (eqn-rhs e)]
              [pr (assp (lambda (x) (var=? x v)) vars)]
              [δ (if pr (cdr pr) 0)])
-        (if (> δ c) (error #f "Negative") void)
         (cons (eqn v (max (- c δ) 0) rhs) (rem-refs (cdr li) vars)))))
 
 (define (add-refs li vars)
