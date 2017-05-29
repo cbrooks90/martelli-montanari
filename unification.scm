@@ -70,8 +70,7 @@
              [e-from-u (assp (lambda (x) (var=? x v)) unsolved)]
              [e-from-s (and (not e-from-u) (assp (lambda (x) (var=? x v)) solved))]
              [e (or e-from-u e-from-s (eqn v 0 '()))])
-        (if e
-            (merge (cdr vars)
+        (merge (cdr vars)
                    (- (+ refs (eqn-count e)) 1)
                    (if (memq v reps) reps (cons v reps))
                    (append rhs (eqn-rhs e))
@@ -80,8 +79,7 @@
                    (append equiv-to-v (cdr (or (assq v equiv-vars) (list #f))))
                    (remq (assq v equiv-vars) equiv-vars)
                    (if e-from-u (merge-vars (vars-in (eqn-rhs e)) vars-to-rem) vars-to-rem)
-                   (if e-from-s (merge-vars (vars-in (eqn-rhs e)) vars-to-add) vars-to-add))
-            void))));(merge (cdr vars) (- refs 1) reps rhs unsolved solved equiv-to-v equiv-vars)))))
+                   (if e-from-s (merge-vars (vars-in (eqn-rhs e)) vars-to-add) vars-to-add)))))
 
 (define (factor terms u s equiv-vars top)
   (let ([vars (filter var? terms)])
