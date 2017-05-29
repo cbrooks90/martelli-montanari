@@ -117,7 +117,7 @@
 
 (define ground-appendo (appendo '(a) '(b) '(a b)))
 
-(define ground-appendo2  (appendo2 '(a) '(b) '(a b)))
+(define ground-appendo2 (appendo2 '(a) '(b) '(a b)))
 
 (define relo
   (lambda (x)
