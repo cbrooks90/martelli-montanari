@@ -2,10 +2,16 @@
 
 (load "unification.scm")
 
+; To-do: Remove equiv-vars from substitutions
+
+;(define (old-unify t1 t2 solved)
+;  (solve (list (eqn #f 0 `(,t1 ,t2)))
+;         (initialize (merge-vars (vars-in t1) (vars-in t2)) solved)))
+
 (define (== u v)
   (lambda (s/c)
-    (let-values ([(solved equiv) (unify u v (car s/c) (cadr s/c))])
-      (if solved (unit `(,solved ,equiv . ,(cddr s/c))) mzero))))
+    (let ([s (unify u v (car s/c))])
+      (if s (unit `(,s . ,(cdr s/c))) mzero))))
 
 (define (unit s/c) (cons s/c mzero))
 (define mzero '())
