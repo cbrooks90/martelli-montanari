@@ -65,20 +65,17 @@
                         (cons e (add-refs unsolved vars-to-add))
                         (add-refs solved vars-to-add)
                         equiv-vars))))
-      (let* ([v (rep (car vars) equiv-vars)]
-             [e-from-u (assp (lambda (x) (var=? x v)) unsolved)]
-             [e-from-s (and (not e-from-u) (assp (lambda (x) (var=? x v)) solved))]
-             [e (or e-from-u e-from-s (eqn v 0 '()))])
+      (let-values ([(eqn e-u? e-s?) (find-eqn (car vars) unsolved solved)])
         (merge (cdr vars)
-                   (- (+ refs (eqn-count e)) 1)
-                   (if (memq v reps) reps (cons v reps))
-                   (append rhs (eqn-rhs e))
-                   (if e-from-u (remove e unsolved) unsolved)
-                   (if e-from-s (remove e solved) solved)
-                   (append equiv-to-v (cdr (or (assq v equiv-vars) (list #f))))
-                   (remq (assq v equiv-vars) equiv-vars)
-                   (if e-from-u (merge-vars (vars-in (eqn-rhs e)) vars-to-rem) vars-to-rem)
-                   (if e-from-s (merge-vars (vars-in (eqn-rhs e)) vars-to-add) vars-to-add)))))
+               (- (+ refs (eqn-count e)) 1)
+               (if (memq v reps) reps (cons v reps))
+               (append rhs (eqn-rhs e))
+               (if e-u? (remove e unsolved) unsolved)
+               (if e-s? (remove e solved) solved)
+               (append equiv-to-v (cdr (or (assq v equiv-vars) (list #f))))
+               (remq (assq v equiv-vars) equiv-vars)
+               (if e-u? (merge-vars (vars-in (eqn-rhs e)) vars-to-rem) vars-to-rem)
+               (if e-s? (merge-vars (vars-in (eqn-rhs e)) vars-to-add) vars-to-add)))))
 
 (define (factor terms u s)
   (let ([vars (filter var? terms)])
@@ -124,18 +121,3 @@
         [(var? t) `((,t . ,1))]
         [(pair? t) (merge-vars (vars-in (car t)) (vars-in (cdr t)))]
         [else '()]))
-
-(define (initialize vs eqns)
-  (if (null? vs) eqns
-      (let loop ([es eqns] [v (rep (caar vs) equiv-vars)] [accum '()])
-        (if (null? es)
-            (initialize (cdr vs) (cons (eqn v (cdar vs) '()) eqns))
-            (let ([e (car es)])
-              (if (var=? v (eqn-var e))
-                  (initialize
-                    (cdr vs)
-                    (append
-                      accum
-                      (cons (eqn v (+ (eqn-count e) (cdar vs)) (eqn-rhs e))
-                            (cdr es))))
-                  (loop (cdr es) v (cons e accum))))))))
