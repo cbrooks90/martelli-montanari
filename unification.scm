@@ -2,10 +2,11 @@
 (define var? vector?)
 (define (var=? v1 v2) (eqv? (vector-ref v1 0) (vector-ref v2 0)))
 
-(define (eqn v c ts) `(,v ,c . ,ts))
+(define (eqn v vs c ts) `(,v ,vs ,c . ,ts))
 (define eqn-var car)
-(define eqn-count cadr)
-(define eqn-rhs cddr)
+(define eqn-vars cadr
+(define eqn-count caddr)
+(define eqn-rhs cdddr)
 
 (define (prefix term)
   (cond [(pair? term) 'pair]
@@ -25,11 +26,6 @@
             (common-prefix p (cdr rest))
             #f))))
 
-(define (rep v equiv-vars)
-  (cond [(null? equiv-vars) v]
-        [(memp (lambda (x) (var=? x v)) (car equiv-vars)) (caar equiv-vars)]
-        [else (rep v (cdr equiv-vars))]))
-
 (define (rem-refs li vars)
   (if (null? li) '()
       (let* ([e (car li)]
@@ -44,41 +40,28 @@
              [v (eqn-var e)] [c (eqn-count e)] [rhs (eqn-rhs e)]
              [pr (assp (lambda (x) (var=? x v)) vars)]
              [δ (if pr (cdr pr) 0)]
-             [vars (if pr (remp (lambda (x) (var=? (car x) v)) vars) vars)])
+             [vars (if pr (remp (lambda (x) (var=? (car x) v)) vars) vars)]); Is this still necessary?
         (cons (eqn v (+ c δ) rhs) (add-refs (cdr li) vars)))))
 
-(define (merge vars refs reps rhs unsolved solved equiv-to-v equiv-vars vars-to-rem vars-to-add)
+(define (merge vars u s u-vars s-vars var~ vars~ count~ rhs~)
   (if (null? vars)
-      (let ([e (eqn (car reps) refs rhs)]
-            [equiv-vars
-             (if (and (null? equiv-to-v) (null? (cdr reps)))
-                 equiv-vars
-                 (cons (append reps equiv-to-v) equiv-vars))])
-        (if (null? rhs)
-            (values (car reps) unsolved (cons e solved) equiv-vars)
-            (if (null? (cdr rhs))
-                (values (car reps)
-                        (rem-refs unsolved vars-to-rem)
-                        (cons e (rem-refs solved vars-to-rem))
-                        equiv-vars)
-                (values (car reps)
-                        (cons e (add-refs unsolved vars-to-add))
-                        (add-refs solved vars-to-add)
-                        equiv-vars))))
-      (let-values ([(eqn e-u? e-s?) (find-eqn (car vars) unsolved solved)])
+      (let ([e (eqn var~ vars~ count~ rhs~)])
+        (if (or (null? rhs) (null? (cdr rhs)))
+            (values var~ (rem-refs u u-vars) (cons e (rem-refs s u-vars)))
+            (values var~ (cons e (add-refs u s-vars)) (add-refs s s-vars))))
+      (let-values ([(eqn e-u? e-s?) (find-eqn (car vars) u s)])
         (merge (cdr vars)
-               (- (+ refs (eqn-count e)) 1)
-               (if (memq v reps) reps (cons v reps))
-               (append rhs (eqn-rhs e))
-               (if e-u? (remove e unsolved) unsolved)
-               (if e-s? (remove e solved) solved)
-               (append equiv-to-v (cdr (or (assq v equiv-vars) (list #f))))
-               (remq (assq v equiv-vars) equiv-vars)
-               (if e-u? (merge-vars (vars-in (eqn-rhs e)) vars-to-rem) vars-to-rem)
-               (if e-s? (merge-vars (vars-in (eqn-rhs e)) vars-to-add) vars-to-add)))))
+               (if e-u? (remove e u) u)
+               (if e-s? (remove e s) s)
+               (if e-u? (merge-vars (vars-in (eqn-rhs e)) u-vars) u-vars)
+               (if e-s? (merge-vars (vars-in (eqn-rhs e)) s-vars) s-vars)
+               (eqn-var e)
+               ?
+               (- (+ count~ (eqn-count e)) 1)
+               (append rhs (eqn-rhs e))))))
 
 (define (factor terms u s)
-  (let ([vars (filter var? terms)])
+  (let-values ([(vars not-vars) (filter-vars terms)])
     (if (null? vars)
         (let ([head (common-prefix (prefix (car terms)) (cdr terms))])
           (case head
@@ -90,8 +73,7 @@
                  (values (cons car-c cdr-c) u s)))]
             [(#f) (values head u #f)]
             [else (values (unprefix head) u s)]))
-        (let ([not-vars (filter (lambda (x) (not (var? x))) terms)])
-          (merge vars 0 '() not-vars u s '() equiv-vars (vars-in not-vars) '())))))
+        (merge vars u s (vars-in not-vars) '() #f '() 0 not-vars))))
 
 (define (unify to-do eqns)
   (if (null? to-do) eqns
