@@ -45,7 +45,7 @@
 
 (define (merge vars u s u-vars s-vars var~ vars~ count~ rhs~)
   (if (null? vars)
-      (let ([e (eqn var~ vars~ count~ rhs~)])
+      (let ([e (eqn var~ (remove var~ vars~) count~ rhs~)])
         (if (or (null? rhs) (null? (cdr rhs)))
             (values var~ (rem-refs u u-vars) (cons e (rem-refs s u-vars)))
             (values var~ (cons e (add-refs u s-vars)) (add-refs s s-vars))))
@@ -56,7 +56,7 @@
                (if e-u? (merge-vars (vars-in (eqn-rhs e)) u-vars) u-vars)
                (if e-s? (merge-vars (vars-in (eqn-rhs e)) s-vars) s-vars)
                (eqn-var e)
-               ?
+               (append (list (eqn-var e)) (eqn-vars e) vars~)
                (- (+ count~ (eqn-count e)) 1)
                (append rhs (eqn-rhs e))))))
 
