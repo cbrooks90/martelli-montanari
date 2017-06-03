@@ -59,7 +59,7 @@
 
 (define (resolve term subst)
   (cond [(var? term)
-         (let ([e (v-in-list term subst)])
+         (let ([e (or (v-in-list term subst) (eqn term '() 0 '()))])
            (if (null? (eqn-rhs e)) (eqn-var e) (resolve (car (eqn-rhs e)) subst)))]
         [(pair? term) (cons (resolve (car term) subst)
                             (resolve (cdr term) subst))]
