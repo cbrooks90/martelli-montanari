@@ -36,7 +36,7 @@
     ((_ (x ...) g0 g ...)
      (map reify-1st (take-all (call/goal (fresh (x ...) g0 g ...)))))))
 
-(define empty-state '(() () . 0))
+(define empty-state '(() . 0))
 
 (define (call/goal g) (g empty-state))
 
@@ -53,18 +53,16 @@
         (if (null? $) '() (cons (car $) (take (- n 1) (cdr $)))))))
 
 (define (reify-1st s/c)
-  (let ([v (resolve (var 0) (car s/c) (cadr s/c))])
+  (let ([v (resolve (var 0) (car s/c))])
     (let-values ([(res _) (reify-s v '())])
       res)))
 
-(define (resolve term subst equiv-vars)
+(define (resolve term subst)
   (cond [(var? term)
-         (let* ([v (rep term equiv-vars)]
-                [t (or (assp (lambda (x) (var=? v x)) subst) (eqn v 0 '()))])
-           (if (null? (eqn-rhs t)) v
-               (resolve (car (eqn-rhs t)) subst equiv-vars)))]
-        [(pair? term) (cons (resolve (car term) subst equiv-vars)
-                            (resolve (cdr term) subst equiv-vars))]
+         (let ([e (v-in-list term subst)])
+           (if (null? (eqn-rhs e)) (eqn-var e) (resolve (car (eqn-rhs e)) subst)))]
+        [(pair? term) (cons (resolve (car term) subst)
+                            (resolve (cdr term) subst))]
         [else term]))
 
 (define (reify-s t names)

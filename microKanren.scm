@@ -4,20 +4,18 @@
 
 (define (initialize vs eqns)
   (if (null? vs) eqns
-      (let loop ([es eqns] [v (rep (caar vs) equiv-vars)] [accum '()])
-        (if (null? es)
-            (initialize (cdr vs) (cons (eqn v (cdar vs) '()) eqns))
-            (let ([e (car es)])
-              (if (var=? v (eqn-var e))
-                  (initialize
-                    (cdr vs)
-                    (append
-                      accum
-                      (cons (eqn v (+ (eqn-count e) (cdar vs)) (eqn-rhs e))
-                            (cdr es))))
-                  (loop (cdr es) v (cons e accum))))))))
+      (initialize
+        (cdr vs)
+        (let loop ([es eqns] [v (eqn-var (v-in-list (caar vs) eqns))])
+          (if (null? es)
+              (initialize (cdr vs) (cons (eqn v '() (cdar vs) '()) eqns))
+              (let ([e (car es)])
+                (if (var=? v (eqn-var e))
+                    (cons (eqn v (eqn-vars e) (+ (eqn-count e) (cdar vs)) (eqn-rhs e))
+                          (cdr es))
+                    (cons e (loop (cdr es) v)))))))))
 
-(define (== u v)
+(define (== t1 t2)
   (lambda (s/c)
     (let ([s (unify (list (eqn #f '() 0 (list t1 t2)))
                     (initialize (merge-vars (vars-in t1) (vars-in t2)) (car s/c)))])

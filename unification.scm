@@ -4,7 +4,7 @@
 
 (define (eqn v vs c ts) `(,v ,vs ,c . ,ts))
 (define eqn-var car)
-(define eqn-vars cadr
+(define eqn-vars cadr)
 (define eqn-count caddr)
 (define eqn-rhs cdddr)
 
@@ -29,19 +29,31 @@
 (define (rem-refs li vars)
   (if (null? li) '()
       (let* ([e (car li)]
-             [v (eqn-var e)] [c (eqn-count e)] [rhs (eqn-rhs e)]
+             [v (eqn-var e)] [vs (eqn-vars e)] [c (eqn-count e)] [rhs (eqn-rhs e)]
              [pr (assp (lambda (x) (var=? x v)) vars)]
              [δ (if pr (cdr pr) 0)])
-        (cons (eqn v (max (- c δ) 0) rhs) (rem-refs (cdr li) vars)))))
+        (cons (eqn v vs (max (- c δ) 0) rhs) (rem-refs (cdr li) vars)))))
 
 (define (add-refs li vars)
   (if (null? li) '()
       (let* ([e (car li)]
-             [v (eqn-var e)] [c (eqn-count e)] [rhs (eqn-rhs e)]
+             [v (eqn-var e)] [vs (eqn-vars e)] [c (eqn-count e)] [rhs (eqn-rhs e)]
              [pr (assp (lambda (x) (var=? x v)) vars)]
              [δ (if pr (cdr pr) 0)]
              [vars (if pr (remp (lambda (x) (var=? (car x) v)) vars) vars)]); Is this still necessary?
-        (cons (eqn v (+ c δ) rhs) (add-refs (cdr li) vars)))))
+        (cons (eqn v vs (+ c δ) rhs) (add-refs (cdr li) vars)))))
+
+(define (v-in-list v li)
+  (or (find (lambda (e)
+              (or (var=? v (eqn-var e)) (member v (eqn-vars e)))) li)
+      (eqn v '() 0 '())))
+
+(define (find-eqn v u s)
+  (let ([u-eqn (v-in-list v u)])
+    (if u-eqn (values #t #f u-eqn)
+        (let ([s-eqn (v-in-list v s)])
+          (if s-eqn (values #f #t s-eqn)
+              (values #f #f (eqn v '() 0 '())))))))
 
 (define (merge vars u s u-vars s-vars var~ vars~ count~ rhs~)
   (if (null? vars)
@@ -49,7 +61,7 @@
         (if (or (null? rhs) (null? (cdr rhs)))
             (values var~ (rem-refs u u-vars) (cons e (rem-refs s u-vars)))
             (values var~ (cons e (add-refs u s-vars)) (add-refs s s-vars))))
-      (let-values ([(eqn e-u? e-s?) (find-eqn (car vars) u s)])
+      (let-values ([(e e-u? e-s?) (find-eqn (car vars) u s)])
         (merge (cdr vars)
                (if e-u? (remove e u) u)
                (if e-s? (remove e s) s)
@@ -82,7 +94,7 @@
              (let-values ([(c to-do eqns) (factor (eqn-rhs e) (remove e to-do) eqns)])
                (and eqns
                     (unify to-do (if (eqn-var e)
-                                     (cons (eqn (eqn-var e) 0 (list c)) eqns)
+                                     (cons (eqn (eqn-var e) (eqn-vars e) 0 (list c)) eqns)
                                      eqns))))))))
 
 (define (merge-vars l1 l2)
