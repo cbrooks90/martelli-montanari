@@ -6,12 +6,12 @@
   (if (null? vs) eqns
       (initialize
         (cdr vs)
-        (let loop ([es eqns] [v (eqn-var (or (v-in-list (caar vs) eqns) (car vs)))])
+        (let loop ([es eqns] [v (eqn-var (or (find-class (caar vs) eqns) (car vs)))])
           (if (null? es)
               (list (eqn v '() (cdar vs) '()))
               (let ([e (car es)])
                 (if (var=? v (eqn-var e))
-                    (cons (eqn v (eqn-vars e) (+ (eqn-count e) (cdar vs)) (eqn-rhs e)) (cdr es))
+                    (cons (eqn v (eqn-vars e) (+ (eqn-count e) (cdar vs)) (eqn-terms e)) (cdr es))
                     (cons e (loop (cdr es) v)))))))))
 
 (define (== t1 t2)

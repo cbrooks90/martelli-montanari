@@ -59,8 +59,8 @@
 
 (define (resolve term subst)
   (cond [(var? term)
-         (let ([e (or (v-in-list term subst) (eqn term '() 0 '()))])
-           (if (null? (eqn-rhs e)) (eqn-var e) (resolve (car (eqn-rhs e)) subst)))]
+         (let ([e (or (find-class term subst) (eqn term '() 0 '()))])
+           (if (null? (eqn-terms e)) (eqn-var e) (resolve (car (eqn-terms e)) subst)))]
         [(pair? term) (cons (resolve (car term) subst)
                             (resolve (cdr term) subst))]
         [else term]))
