@@ -14,10 +14,13 @@
                     (cons (eqn v (eqn-vars e) (+ (eqn-count e) (cdar vs)) (eqn-terms e)) (cdr es))
                     (cons e (loop (cdr es) v)))))))))
 
-(define (== t1 t2)
+(define (== t . ts)
   (lambda (s/c)
-    (let ([s (unify (list (eqn #f '() 0 (list t1 t2)))
-                    (initialize (merge-vars (vars-in t1) (vars-in t2)) (car s/c)))])
+    (let ([s (unify (list (eqn #f '() 0 (cons t ts)))
+                    (initialize (fold-right
+                                  (lambda (x acc)
+                                    (merge-vars (vars-in x) acc))
+                                  '() (cons t ts)) (car s/c)))])
       (if s (unit `(,s . ,(cdr s/c))) mzero))))
 
 (define (unit s/c) (cons s/c mzero))
