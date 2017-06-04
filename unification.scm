@@ -105,16 +105,13 @@
 
 (define (merge-vars l1 l2)
   (if (null? l1) l2
-      (let loop ([v (car l1)] [l2 l2] [accum '()])
-        (cond [(null? l2) (merge-vars (cdr l1) (cons v accum))]
-              [(var=? (car v) (caar l2))
-               (merge-vars
-                 (cdr l1)
-                 (append
-                   accum
-                   (cons (cons (car v) (+ (cdr v) (cdar l2)))
-                         (cdr l2))))]
-              [else (loop v (cdr l2) (cons (car l2) accum))]))))
+      (merge-vars
+        (cdr l1)
+        (let loop ([v (car l1)] [l2 l2])
+          (cond [(null? l2) (list v)]
+                [(var=? (car v) (caar l2))
+                 (cons (cons (car v) (+ (cdr v) (cdar l2))) (cdr l2))]
+                [else (cons (car l2) (loop v (cdr l2)))])))))
 
 (define (vars-in t)
   (cond [(null? t) '()]
