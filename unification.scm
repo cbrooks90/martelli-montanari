@@ -3,7 +3,7 @@
 (define (var=? v1 v2) (eqv? (vector-ref v1 0) (vector-ref v2 0)))
 
 ; By 'equation' we mean an equivalence class of equations, each of which
-; associates a set of variables to a set of terms
+; associates a set of variables to a set of terms which are not variables
 (define (eqn v vs c ts) `(,v ,vs ,c . ,ts))
 (define eqn-var car)
 (define eqn-vars cadr)
@@ -35,7 +35,7 @@
   (if (null? li) '()
       (let* ([e (car li)]
              [v (eqn-var e)] [vs (eqn-vars e)] [c (eqn-count e)] [t (eqn-terms e)]
-             [pr (assp (lambda (x) (var=? x v)) vars)]
+             [pr (assp (lambda (x) (member x (cons v vs))) vars)]
              [δ (if pr (cdr pr) 0)])
         (cons (eqn v vs (proc c δ) t) (mod-refs (cdr li) vars proc)))))
 
