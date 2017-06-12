@@ -32,12 +32,18 @@
         [else '()]))
 
 (define (mod-refs li vars proc)
-  (if (null? li) '()
-      (let* ([e (car li)]
-             [v (eqn-var e)] [vs (eqn-vars e)] [c (eqn-count e)] [t (eqn-terms e)]
-             [pr (assp (lambda (x) (member x (cons v vs))) vars)]
-             [δ (if pr (cdr pr) 0)])
-        (cons (eqn v vs (proc c δ) t) (mod-refs (cdr li) vars proc)))))
+  (let loop ([li li] [vars vars] [proc proc])
+    (if (null? li) '()
+        (let ([e (car li)])
+          (cons (eqn (eqn-var e) (eqn-vars e)
+                     (fold-left
+                       (lambda (acc x)
+                         (if (member (car x) (cons (eqn-var e) (eqn-vars e)))
+                             (proc acc (cdr x))
+                             acc))
+                       (eqn-count e)
+                       vars)
+                     (eqn-terms e)) (loop (cdr li) vars proc))))))
 
 (define (prefix term)
   (cond [(pair? term) 'pair]
